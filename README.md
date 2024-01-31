@@ -6,3 +6,5 @@ An UMG exposed deferred paint container for Unreal.
 Useful for tutorial highlights, you can toggle the deferred rendering by just modifying the boolean property on the umg panel.
 
 You can wrap any umg hierarchy in this panel and enable the "Defer render" boolean on it to draw everything under it on top of everything else.
+
+Small disclaimer, when i say on top of everything else, I do mean EVERYTHING, editor included.
