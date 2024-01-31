@@ -2,15 +2,11 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Components/ContentWidget.h"
 #include "DeferredPainter.generated.h"
 
-/**
- * 
- */
 UCLASS()
-class WEBSITESUPPORT_API UDeferredPainter : public UContentWidget
+class [MODULE EXPORT HERE] UDeferredPainter : public UContentWidget
 {
 	GENERATED_BODY()
 
