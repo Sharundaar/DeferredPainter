@@ -13,6 +13,12 @@ class [MODULE EXPORT HERE] UDeferredPainter : public UContentWidget
 public:
 	UPROPERTY(EditAnywhere)
 	bool bEnableDeferPaint = false;
+
+	UFUNCTION(BlueprintCallable)
+	void SetEnableDeferPaint(bool bInEnableDeferPaint);
+
+	UFUNCTION(BlueprintCallable)
+	bool GetEnableDeferPaint() const {return bEnableDeferPaint;}
 	
 protected:
 	virtual TSharedRef<SWidget> RebuildWidget() override;
