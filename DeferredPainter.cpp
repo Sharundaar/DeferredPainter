@@ -56,6 +56,12 @@ protected:
 	bool bDrawDefer = false;
 };
 
+void UDeferredPainter::SetEnableDeferPaint(bool bInEnableDeferPaint)
+{
+	bEnableDeferPaint = bInEnableDeferPaint;
+	DeferredPainter->SetDeferPaint(bInEnableDeferPaint);
+}
+
 TSharedRef<SWidget> UDeferredPainter::RebuildWidget()
 {
 	TSharedRef<SDeferredPainter> DeferPainter = SAssignNew(DeferredPainter, SDeferredPainter).bDrawDefer(bEnableDeferPaint);
