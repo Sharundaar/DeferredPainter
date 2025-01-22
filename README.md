@@ -7,4 +7,4 @@ Useful for tutorial highlights, you can toggle the deferred rendering by just mo
 
 You can wrap any umg hierarchy in this panel and enable the "Defer render" boolean on it to draw everything under it on top of everything else.
 
-Small disclaimer, when i say on top of everything else, I do mean EVERYTHING, editor included.
+You can also set the Painter Target property on the DeferredPainter to render it to a specific UDeferredPainterTarget widget instead of the global one, useful when you want to keep some control on what's rendered on top of your deferred widgets !

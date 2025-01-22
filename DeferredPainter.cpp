@@ -2,16 +2,30 @@
 
 #include "DeferredPainter.h"
 
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/SLeafWidget.h"
+
 class SDeferredPainter : public SBox
 {
 public:
-	SLATE_BEGIN_ARGS(SDeferredPainter) {}
+	SLATE_BEGIN_ARGS(SDeferredPainter) :
+		_bDrawDefer(false), 
+		_Target(nullptr)
+	{}
 		SLATE_ARGUMENT(bool, bDrawDefer)
+		SLATE_ARGUMENT(UDeferredPainterTarget*, Target);
 	SLATE_END_ARGS()
 
 	void Construct(const FArguments& InArgs)
 	{
 		bDrawDefer = InArgs._bDrawDefer;
+		PaintTarget = InArgs._Target;
+	}
+
+	void SetTarget(UDeferredPainterTarget* Target)
+	{
+		PaintTarget = Target;
+		Invalidate(EInvalidateWidgetReason::Paint);
 	}
 	
 	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override
@@ -27,13 +41,22 @@ public:
 			{
 				check( ArrangedChildren.Num() == 1 );
 				FArrangedWidget& TheChild = ArrangedChildren[0];
-				OutDrawElements.QueueDeferredPainting({
-								ChildSlot.GetWidget(),
-								Args.WithNewParent(this),
-								TheChild.Geometry,
-								InWidgetStyle,
-								ShouldBeEnabled( bParentEnabled )
-							});
+
+				FSlateWindowElementList::FDeferredPaint PaintArgs = {
+					ChildSlot.GetWidget(),
+					Args.WithNewParent(this),
+					TheChild.Geometry,
+					InWidgetStyle,
+					ShouldBeEnabled( bParentEnabled )
+				};
+				if (const UDeferredPainterTarget* Target = PaintTarget.Get())
+				{
+					Target->QueueDeferredPainting(MoveTemp(PaintArgs));
+				}
+				else
+				{
+					OutDrawElements.QueueDeferredPainting(MoveTemp(PaintArgs));
+				}
 			}
 			return LayerId;
 		}
@@ -54,6 +77,7 @@ public:
 
 protected:
 	bool bDrawDefer = false;
+	TWeakObjectPtr<UDeferredPainterTarget> PaintTarget;
 };
 
 void UDeferredPainter::SetEnableDeferPaint(bool bInEnableDeferPaint)
@@ -64,7 +88,7 @@ void UDeferredPainter::SetEnableDeferPaint(bool bInEnableDeferPaint)
 
 TSharedRef<SWidget> UDeferredPainter::RebuildWidget()
 {
-	TSharedRef<SDeferredPainter> DeferPainter = SAssignNew(DeferredPainter, SDeferredPainter).bDrawDefer(bEnableDeferPaint);
+	TSharedRef<SDeferredPainter> DeferPainter = SAssignNew(DeferredPainter, SDeferredPainter).bDrawDefer(bEnableDeferPaint).Target(Target);
 	if(UWidget* Content = GetContent())
 	{
 		DeferPainter->SetContent(Content->TakeWidget());
@@ -86,6 +110,7 @@ void UDeferredPainter::SynchronizeProperties()
 	}
 
 	DeferredPainter->SetDeferPaint(bEnableDeferPaint);
+	DeferredPainter->SetTarget(Target);
 }
 
 void UDeferredPainter::ReleaseSlateResources(bool bReleaseChildren)
@@ -113,4 +138,55 @@ void UDeferredPainter::OnSlotRemoved(UPanelSlot* InSlot)
 	}
 
 	DeferredPainter->SetContent(SNullWidget::NullWidget);
+}
+
+class SDeferredPainterTarget : public SLeafWidget
+{
+	SLATE_BEGIN_ARGS(SDeferredPainterTarget) {}
+	SLATE_END_ARGS()
+
+public:
+	void Construct(const FArguments& Args) {}
+
+	virtual FVector2D ComputeDesiredSize(float LayoutScaleMultiplier) const override { return FVector2D(0, 0); }
+	
+	virtual int32 OnPaint(const FPaintArgs& Args, const FGeometry& AllottedGeometry, const FSlateRect& MyCullingRect, FSlateWindowElementList& OutDrawElements, int32 LayerId, const FWidgetStyle& InWidgetStyle, bool bParentEnabled) const override
+	{
+		for (auto& Data: PaintDatas)
+		{
+			Data.ExecutePaint(LayerId, OutDrawElements, MyCullingRect);
+		}
+		PaintDatas.Reset();
+		
+		return LayerId;
+	}
+	
+	void QueueDeferredPainting(const FSlateWindowElementList::FDeferredPaint& InDeferredPaint)
+	{
+		PaintDatas.Add(InDeferredPaint);
+		Invalidate(EInvalidateWidgetReason::Paint);
+	}
+
+protected:
+	mutable TArray<FSlateWindowElementList::FDeferredPaint> PaintDatas;
+};
+
+void UDeferredPainterTarget::QueueDeferredPainting(const FSlateWindowElementList::FDeferredPaint& InDeferredPaint) const
+{
+	if (Painter)
+	{
+		Painter->QueueDeferredPainting(InDeferredPaint);
+	}
+}
+
+void UDeferredPainterTarget::ReleaseSlateResources(bool bReleaseChildren)
+{
+	Super::ReleaseSlateResources(bReleaseChildren);
+
+	Painter = nullptr;
+}
+
+TSharedRef<SWidget> UDeferredPainterTarget::RebuildWidget()
+{
+	return SAssignNew(Painter, SDeferredPainterTarget);
 }
