@@ -4,6 +4,7 @@
 
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SLeafWidget.h"
+#include "Layout/ArrangedChildren.h"
 
 class SDeferredPainter : public SBox
 {
